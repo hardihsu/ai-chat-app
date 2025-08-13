@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   id: string;
@@ -12,7 +14,7 @@ const IOSChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '你好！我是AI助手，很高兴为您服务。有什么我可以帮助您的吗？',
+      text: '你好！我是AI助手，很高兴为您服务。有什么我可以帮助您的吗？\n\n我可以帮助您：\n- 回答问题\n- 编写代码\n- 分析数据\n- 创意写作\n\n请随时告诉我您需要什么帮助！',
       isUser: false,
       timestamp: new Date()
     }
@@ -29,6 +31,67 @@ const IOSChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  const generateAIResponse = (userMessage: string): string => {
+    // 模拟不同类型的AI响应，包含markdown格式
+    const responses = [
+      `感谢您的消息："${userMessage}"
+
+我理解您的需求。这里是一个详细的回答：
+
+## 主要要点
+
+1. **第一点**: 这是重要的信息
+2. **第二点**: 包含一些细节
+3. **第三点**: 更多相关内容
+
+### 代码示例
+\`\`\`javascript
+function example() {
+  console.log('Hello World!');
+  return true;
+}
+\`\`\`
+
+> **提示**: 这是一个重要的提醒信息
+
+希望这能帮助到您！还有其他问题吗？`,
+      
+      `针对您提到的"${userMessage}"，我来为您详细解答：
+
+### 📝 分析结果
+
+- ✅ **优势**: 方案可行性高
+- ⚠️ **注意**: 需要考虑以下因素
+- 🔧 **建议**: 可以这样优化
+
+**重要提醒**: 
+> 实际应用中需要根据具体情况调整
+
+如需更多信息，请告诉我！`,
+      
+      `关于"${userMessage}"的问题：
+
+## 🎯 解决方案
+
+### 步骤1: 分析需求
+首先需要明确具体的目标和要求。
+
+### 步骤2: 制定计划
+- [ ] 准备必要的资源
+- [ ] 设定时间节点
+- [ ] 确定成功标准
+
+### 步骤3: 执行实施
+按照计划逐步推进。
+
+**总结**: 通过系统性的方法可以有效解决问题。
+
+还有什么需要我详细说明的吗？`
+    ];
+    
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -40,6 +103,7 @@ const IOSChatInterface: React.FC = () => {
     };
 
     setMessages(prev => [...prev, newMessage]);
+    const currentInput = inputText;
     setInputText('');
     setIsTyping(true);
 
@@ -47,7 +111,7 @@ const IOSChatInterface: React.FC = () => {
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: '感谢您的消息！这是一个模拟的AI回复。在实际应用中，这里会连接到真正的AI服务。',
+        text: generateAIResponse(currentInput),
         isUser: false,
         timestamp: new Date()
       };
@@ -100,8 +164,34 @@ const IOSChatInterface: React.FC = () => {
                   : 'bg-white/80 backdrop-blur-sm text-gray-800 border border-white/50 rounded-bl-lg shadow-sm'
               }`}
             >
-              <p className="text-sm leading-relaxed">{message.text}</p>
-              <p className={`text-xs mt-1 ${
+              {message.isUser ? (
+                <p className="text-sm leading-relaxed">{message.text}</p>
+              ) : (
+                <div className="text-sm leading-relaxed text-left">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    className="prose prose-sm max-w-none"
+                    components={{
+                      // 自定义组件样式
+                      h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-2 text-gray-800">{children}</h1>,
+                      h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2 text-gray-800">{children}</h2>,
+                      h3: ({children}) => <h3 className="text-sm font-semibold mb-1 mt-2 text-gray-800">{children}</h3>,
+                      p: ({children}) => <p className="mb-2 text-gray-800 text-left">{children}</p>,
+                      ul: ({children}) => <ul className="list-disc pl-4 mb-2 text-left">{children}</ul>,
+                      ol: ({children}) => <ol className="list-decimal pl-4 mb-2 text-left">{children}</ol>,
+                      li: ({children}) => <li className="mb-1 text-gray-800 text-left">{children}</li>,
+                      code: ({children}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono text-gray-800">{children}</code>,
+                      pre: ({children}) => <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto mb-2">{children}</pre>,
+                      blockquote: ({children}) => <blockquote className="border-l-4 border-blue-400 pl-3 italic mb-2 text-gray-700">{children}</blockquote>,
+                      strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                      em: ({children}) => <em className="italic text-gray-700">{children}</em>,
+                    }}
+                  >
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+              )}
+              <p className={`text-xs mt-1 text-left ${
                 message.isUser ? 'text-blue-100' : 'text-gray-500'
               }`}>
                 {formatTime(message.timestamp)}
