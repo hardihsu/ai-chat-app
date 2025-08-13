@@ -10,6 +10,11 @@ interface Message {
   timestamp: Date;
 }
 
+interface ApiMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 const IOSChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -21,6 +26,7 @@ const IOSChatInterface: React.FC = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [apiUrl, setApiUrl] = useState('https://your-worker.your-subdomain.workers.dev');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,65 +37,93 @@ const IOSChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const generateAIResponse = (userMessage: string): string => {
-    // 模拟不同类型的AI响应，包含markdown格式
-    const responses = [
-      `感谢您的消息："${userMessage}"
-
-我理解您的需求。这里是一个详细的回答：
-
-## 主要要点
-
-1. **第一点**: 这是重要的信息
-2. **第二点**: 包含一些细节
-3. **第三点**: 更多相关内容
-
-### 代码示例
-\`\`\`javascript
-function example() {
-  console.log('Hello World!');
-  return true;
-}
-\`\`\`
-
-> **提示**: 这是一个重要的提醒信息
-
-希望这能帮助到您！还有其他问题吗？`,
-      
-      `针对您提到的"${userMessage}"，我来为您详细解答：
-
-### 📝 分析结果
-
-- ✅ **优势**: 方案可行性高
-- ⚠️ **注意**: 需要考虑以下因素
-- 🔧 **建议**: 可以这样优化
-
-**重要提醒**: 
-> 实际应用中需要根据具体情况调整
-
-如需更多信息，请告诉我！`,
-      
-      `关于"${userMessage}"的问题：
-
-## 🎯 解决方案
-
-### 步骤1: 分析需求
-首先需要明确具体的目标和要求。
-
-### 步骤2: 制定计划
-- [ ] 准备必要的资源
-- [ ] 设定时间节点
-- [ ] 确定成功标准
-
-### 步骤3: 执行实施
-按照计划逐步推进。
-
-**总结**: 通过系统性的方法可以有效解决问题。
-
-还有什么需要我详细说明的吗？`
-    ];
+  // 获取对话历史，用于API请求
+  const getConversationHistory = (newUserMessage: string): ApiMessage[] => {
+    const conversationMessages: ApiMessage[] = [];
     
-    return responses[Math.floor(Math.random() * responses.length)];
+    // 添加系统消息
+    conversationMessages.push({
+      role: 'assistant',
+      content: '你是一个友好、专业的AI助手。请用markdown格式回复，包含适当的标题、列表、代码块等格式，让回答更清晰易读。'
+    });
+    
+    // 添加最近的对话历史（保留最后5轮对话）
+    const recentMessages = messages.slice(-10); // 最多10条消息，即5轮对话
+    recentMessages.forEach(msg => {
+      if (msg.isUser) {
+        conversationMessages.push({
+          role: 'user',
+          content: msg.text
+        });
+      } else {
+        conversationMessages.push({
+          role: 'assistant',
+          content: msg.text
+        });
+      }
+    });
+    
+    // 添加当前用户消息
+    conversationMessages.push({
+      role: 'user',
+      content: newUserMessage
+    });
+    
+    return conversationMessages;
+  };
+
+  const callAI = async (userMessage: string): Promise<string> => {
+    try {
+      const conversationHistory = getConversationHistory(userMessage);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: conversationHistory,
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // 检查响应格式
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        return data.choices[0].message.content || '抱歉，我没有收到有效的回复。';
+      } else {
+        throw new Error('API返回格式异常');
+      }
+    } catch (error) {
+      console.error('AI API调用失败:', error);
+      
+      // 返回错误信息，包含markdown格式
+      return `## ⚠️ 连接失败
+
+很抱歉，我暂时无法连接到AI服务。
+
+### 可能的原因：
+- 网络连接问题
+- API服务暂时不可用
+- 请求配置需要调整
+
+### 解决建议：
+1. **检查网络连接**
+2. **稍后重试**
+3. **联系管理员配置API地址**
+
+当前API地址: \`${apiUrl}\`
+
+> 💡 **提示**: 您可以在设置中更新API地址`;
+    }
   };
 
   const handleSendMessage = async () => {
@@ -107,17 +141,33 @@ function example() {
     setInputText('');
     setIsTyping(true);
 
-    // 模拟AI回复
-    setTimeout(() => {
+    try {
+      // 调用AI API
+      const aiResponseText = await callAI(currentInput);
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateAIResponse(currentInput),
+        text: aiResponseText,
         isUser: false,
         timestamp: new Date()
       };
+      
       setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('发送消息失败:', error);
+      
+      // 显示错误消息
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: '抱歉，发送消息时出现错误，请稍后重试。',
+        isUser: false,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -138,7 +188,7 @@ function example() {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 max-w-md mx-auto">
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex items-center justify-center shadow-sm">
+      <div className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex items-center justify-center shadow-sm relative">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
             <span className="text-white text-sm font-semibold">AI</span>
@@ -148,6 +198,20 @@ function example() {
             <p className="text-xs text-green-500">在线</p>
           </div>
         </div>
+        
+        {/* API配置按钮 */}
+        <button 
+          onClick={() => {
+            const newUrl = prompt('请输入API地址:', apiUrl);
+            if (newUrl && newUrl.trim()) {
+              setApiUrl(newUrl.trim());
+            }
+          }}
+          className="absolute right-4 p-2 text-gray-500 hover:text-gray-700 transition-colors"
+          title="配置API地址"
+        >
+          ⚙️
+        </button>
       </div>
 
       {/* Messages */}
@@ -236,15 +300,16 @@ function example() {
                 target.style.height = 'auto';
                 target.style.height = Math.min(target.scrollHeight, 120) + 'px';
               }}
+              disabled={isTyping}
             />
           </div>
           
           {/* Send button */}
           <button
             onClick={handleSendMessage}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || isTyping}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-              inputText.trim()
+              inputText.trim() && !isTyping
                 ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600 active:scale-95'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
