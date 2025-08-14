@@ -26,7 +26,7 @@ const IOSChatInterface: React.FC = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [apiUrl, setApiUrl] = useState('https://your-worker.your-subdomain.workers.dev');
+  const [apiUrl, setApiUrl] = useState('https://openai-chat-workers.hardihsu.workers.dev');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -75,21 +75,23 @@ const IOSChatInterface: React.FC = () => {
   const callAI = async (userMessage: string): Promise<string> => {
     try {
       const conversationHistory = getConversationHistory(userMessage);
+      console.log('conversationHistory', conversationHistory)
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${'sk-8b7a212d6aa54e3b984d8b6eb8107135'}`
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
-          messages: conversationHistory,
-          max_tokens: 1000,
-          temperature: 0.7,
-          stream: false
+          messages: [{ role: 'user', content: '你好，请介绍一下DeepSeek' }],
+          // max_tokens: 1000,
+          // temperature: 0.7,
+          // stream: false
         })
       });
-
+      console.log('response', response)
       if (!response.ok) {
         throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
       }
