@@ -26,7 +26,7 @@ const IOSChatInterface: React.FC = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [apiUrl, setApiUrl] = useState('https://openai-chat-workers.hardihsu.workers.dev');
+  const [apiUrl] = useState('https://openai-chat-workers.hardihsu.workers.dev');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
