@@ -81,11 +81,11 @@ const IOSChatInterface: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${'sk-8b7a212d6aa54e3b984d8b6eb8107135'}`
+          'Authorization': `Bearer ${import.meta.env.VITE_DEEPSEEK_API_KEY}`
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
-          messages: [{ role: 'user', content: '你好，请介绍一下DeepSeek' }],
+          messages: [{ role: 'user', content: conversationHistory[conversationHistory.length - 1].content }],
           max_tokens: 1000,
           temperature: 0.7,
           stream: false
@@ -200,20 +200,6 @@ const IOSChatInterface: React.FC = () => {
             <p className="text-xs text-green-500">在线</p>
           </div>
         </div>
-        
-        {/* API配置按钮 */}
-        <button 
-          onClick={() => {
-            const newUrl = prompt('请输入API地址:', apiUrl);
-            if (newUrl && newUrl.trim()) {
-              setApiUrl(newUrl.trim());
-            }
-          }}
-          className="absolute right-4 p-2 text-gray-500 hover:text-gray-700 transition-colors"
-          title="配置API地址"
-        >
-          ⚙️
-        </button>
       </div>
 
       {/* Messages */}
