@@ -86,15 +86,15 @@ const IOSChatInterface: React.FC = () => {
         body: JSON.stringify({
           model: 'deepseek-chat',
           messages: [{ role: 'user', content: '你好，请介绍一下DeepSeek' }],
-          // max_tokens: 1000,
-          // temperature: 0.7,
-          // stream: false
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: false
         })
       });
       console.log('response', response)
-      if (!response.ok) {
-        throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-      }
+      // if (!response.ok) {
+      //   throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+      // }
 
       const data = await response.json();
       
